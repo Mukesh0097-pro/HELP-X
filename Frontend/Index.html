@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Help-X - Community Time Exchange</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <div class="logo">Help-X</div>
+                <ul class="nav-links">
+                    <li><a href="#" onclick="showSection('home')">Home</a></li>
+                    <li><a href="#" onclick="showSection('services')">Services</a></li>
+                    <li><a href="#" onclick="showSection('messages')">Messages</a></li>
+                    <li><a href="#" onclick="showSection('profile')">Profile</a></li>
+                </ul>
+                <div class="user-info">
+                    <div class="credits" id="userCredits">25 Credits</div>
+                    <button class="btn btn-outline" onclick="logout()">Logout</button>
+                </div>
+            </nav>
+        </div>
+    </header>
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Auth Section -->
+        <section id="auth" class="section active">
+            <div class="auth-container">
+                <h2 class="text-center mb-2">Welcome to Help-X</h2>
+                <div id="loginForm">
+                    <form onsubmit="login(event)">
+                        <div class="form-group">
+                            <label for="loginEmail">Email</label>
+                            <input type="email" id="loginEmail" required>
+                            <div class="error" id="loginEmailError"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="loginPassword">Password</label>
+                            <input type="password" id="loginPassword" required>
+                            <div class="error" id="loginPasswordError"></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                    </form>
+                    <p class="text-center mt-2">
+                        Don't have an account? 
+                        <a href="#" onclick="showRegistration()" style="color: #667eea;">Register here</a>
+                    </p>
+                </div>
+                <div id="registrationForm" class="hidden">
+                    <form onsubmit="register(event)">
+                        <div class="form-group">
+                            <label for="regName">Full Name</label>
+                            <input type="text" id="regName" required>
+                            <div class="error" id="regNameError"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="regEmail">Email</label>
+                            <input type="email" id="regEmail" required>
+                            <div class="error" id="regEmailError"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPassword">Password</label>
+                            <input type="password" id="regPassword" required>
+                            <div class="error" id="regPasswordError"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="regPhone">Phone</label>
+                            <input type="tel" id="regPhone">
+                        </div>
+                        <div class="form-group">
+                            <label for="regBio">Bio</label>
+                            <textarea id="regBio" rows="3" placeholder="Tell us about yourself and your skills..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
+                    </form>
+                    <p class="text-center mt-2">
+                        Already have an account? 
+                        <a href="#" onclick="showLogin()" style="color: #667eea;">Login here</a>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Home Section -->
+        <section id="home" class="section">
+            <div class="hero">
+                <div class="container">
+                    <h1>Welcome to Help-X</h1>
+                    <p>Exchange services using time credits instead of money. Build community through shared skills and mutual support.</p>
+                    <div class="hero-buttons">
+                        <button class="btn btn-outline" onclick="showSection('services')">Browse Services</button>
+                        <button class="btn btn-secondary" onclick="openModal('postServiceModal')">Offer Service</button>
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="features">
+                    <div class="feature">
+                        <div class="feature-icon">⏰</div>
+                        <h3>Time-Based Exchange</h3>
+                        <p>One hour of your time equals one credit, regardless of the service. Everyone's time is valued equally.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🤝</div>
+                        <h3>Community Building</h3>
+                        <p>Connect with neighbors and build meaningful relationships while sharing skills and services.</p>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🌱</div>
+                        <h3>Sustainable Living</h3>
+                        <p>Reduce waste and promote sustainability by sharing resources and skills within your community.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Services Section -->
+        <section id="services" class="section">
+            <div class="container">
+                <div class="services-header">
+                    <h2>Available Services</h2>
+                    <div class="search-filter">
+                        <input type="text" class="search-input" id="serviceSearch" placeholder="Search services..." oninput="filterServices()">
+                        <select id="categoryFilter" onchange="filterServices()">
+                            <option value="">All Categories</option>
+                            <option value="home">Home & Garden</option>
+                            <option value="tech">Technology</option>
+                            <option value="education">Education</option>
+                            <option value="health">Health & Wellness</option>
+                            <option value="creative">Creative</option>
+                            <option value="transport">Transport</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="openModal('postServiceModal')">+ Post Service</button>
+                    </div>
+                </div>
+                <div class="services-grid" id="servicesGrid">
+                    <!-- Services will be dynamically loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Profile Section -->
+        <section id="profile" class="section">
+            <div class="container">
+                <div class="profile-header">
+                    <div class="avatar" id="userAvatar">JS</div>
+                    <h2 id="userName">Jackie Chan</h2>
+                    <p id="userEmail">jackie@email.com</p>
+                    <button class="btn btn-primary" onclick="openModal('editProfileModal')">Edit Profile</button>
+                </div>
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-number" id="totalCredits">25</div>
+                        <div>Total Credits</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="servicesOffered">5</div>
+                        <div>Services Offered</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="servicesUsed">8</div>
+                        <div>Services Used</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="userRating">4.8</div>
+                        <div>Rating</div>
+                    </div>
+                </div>
+                <div class="service-history">
+                    <h3>Your Services</h3>
+                    <div class="services-grid" id="userServicesGrid">
+                        <!-- User's services will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Messages Section -->
+        <section id="messages" class="section">
+            <div class="container">
+                <h2 class="mb-2">Messages</h2>
+                <div class="messages-container">
+                    <div class="contacts-list">
+                        <div class="contact active" onclick="selectContact(this, 'Levi Ackerman')">
+                            <strong>Levi Ackerman</strong>
+                            <p>Thanks for the gardening help!</p>
+                        </div>
+                        <div class="contact" onclick="selectContact(this, 'Mukesh')">
+                            <strong>Mukesh</strong>
+                            <p>When can we schedule the tutoring?</p>
+                        </div>
+                        <div class="contact" onclick="selectContact(this, 'Dr.Prem')">
+                            <strong>Dr.Prem</strong>
+                            <p>Great photography session!</p>
+                        </div>
+                    </div>  
+                    <div class="chat-area">
+                        <div class="chat-header" id="chatHeader">Levi Ackerman</div>
+                        <div class="chat-messages" id="chatMessages">
+                            <div class="message received">
+                                <div class="message-content">Hi! I saw your gardening service. Could you help me with my vegetable garden this weekend?</div>
+                            </div>
+                            <div class="message sent">
+                                <div class="message-content">Absolutely! I'd be happy to help. What time works best for you?</div>
+                            </div>
+                            <div class="message received">
+                                <div class="message-content">Saturday morning around 9 AM would be perfect. Thanks for the gardening help!</div>
+                            </div>
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" id="messageInput" placeholder="Type your message..." onkeypress="handleMessageKeyPress(event)">
+                            <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modals -->
+    <!-- Post Service Modal -->
+    <div id="postServiceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Post a Service</h3>
+                <span class="close" onclick="closeModal('postServiceModal')">&times;</span>
+            </div>
+            <form onsubmit="postService(event)">
+                <div class="form-group">
+                    <label for="serviceTitle">Service Title</label>
+                    <input type="text" id="serviceTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="serviceCategory">Category</label>
+                    <select id="serviceCategory" required>
+                        <option value="">Select Category</option>
+                        <option value="home">Home & Garden</option>
+                        <option value="tech">Technology</option>
+                        <option value="education">Education</option>
+                        <option value="health">Health & Wellness</option>
+                        <option value="creative">Creative</option>
+                        <option value="transport">Transport</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="serviceDescription">Description</label>
+                    <textarea id="serviceDescription" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="serviceRate">Credits per Hour</label>
+                    <input type="number" id="serviceRate" min="1" value="1" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Post Service</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="editProfileModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Profile</h3>
+                <span class="close" onclick="closeModal('editProfileModal')">&times;</span>
+            </div>
+            <form onsubmit="updateProfile(event)">
+                <div class="form-group">
+                    <label for="editName">Full Name</label>
+                    <input type="text" id="editName" value="Jackie Chan" required>
+                </div>
+                <div class="form-group">
+                    <label for="editEmail">Email</label>
+                    <input type="email" id="editEmail" value="jackie@email.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="editPhone">Phone</label>
+                    <input type="tel" id="editPhone" value="14002 54002">
+                </div>
+                <div class="form-group">
+                    <label for="editBio">Bio</label>
+                    <textarea id="editBio" rows="4">Experienced gardener and tech enthusiast. Love helping my community with various tasks!</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Update Profile</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Book Service Modal -->
+    <div id="bookServiceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Book Service</h3>
+                <span class="close" onclick="closeModal('bookServiceModal')">&times;</span>
+            </div>
+            <form onsubmit="bookService(event)">
+                <div class="form-group">
+                    <label for="bookingDate">Preferred Date</label>
+                    <input type="date" id="bookingDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="bookingTime">Preferred Time</label>
+                    <input type="time" id="bookingTime" required>
+                </div>
+                <div class="form-group">
+                    <label for="bookingDuration">Duration (hours)</label>
+                    <input type="number" id="bookingDuration" min="1" max="8" value="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="bookingNotes">Additional Notes</label>
+                    <textarea id="bookingNotes" rows="3" placeholder="Any specific requirements or questions..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Send Booking Request</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="App.js"></script>
+
+</body>
+</html>
