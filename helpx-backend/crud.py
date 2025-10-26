@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from models import User, Skill
 from typing import List, Optional
+from auth import get_password_hash
 
 # User CRUD operations
 def get_all_users(db: Session) -> List[User]:
@@ -15,9 +16,10 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
     """Get user by email"""
     return db.query(User).filter(User.email == email).first()
 
-def create_user(db: Session, name: str, email: str) -> User:
-    """Create a new user"""
-    db_user = User(name=name, email=email)
+def create_user(db: Session, name: str, email: str, password: str) -> User:
+    """Create a new user with hashed password"""
+    hashed_password = get_password_hash(password)
+    db_user = User(name=name, email=email, hashed_password=hashed_password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

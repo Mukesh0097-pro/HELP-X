@@ -1,12 +1,20 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from datetime import timedelta
 import uvicorn
+from pydantic import BaseModel, EmailStr
 
 from database import engine, get_db, Base
 from models import User, Skill
 import crud
+from auth import (
+    authenticate_user, 
+    create_access_token, 
+    get_current_user,
+    ACCESS_TOKEN_EXPIRE_MINUTES
+)
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
@@ -27,6 +35,21 @@ app.add_middleware(
     allow_headers=["*"],  # Allow all headers
 )
 
+# Pydantic models for request/response
+class UserRegister(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+    user: dict
+
 # Root endpoint
 @app.get("/")
 def read_root():
@@ -34,11 +57,72 @@ def read_root():
         "message": "Welcome to HelpX API - A Skill Sharing Platform",
         "docs": "/docs",
         "endpoints": {
+            "register": "/register",
+            "login": "/login",
             "users": "/users",
-            "add_user": "/add-user",
             "skills": "/skills",
-            "add_skill": "/add-skill"
+            "add_skill": "/add-skill",
+            "me": "/me"
         }
+    }
+
+# Authentication endpoints
+@app.post("/register", response_model=Token)
+def register(user_data: UserRegister, db: Session = Depends(get_db)):
+    """Register a new user with password"""
+    # Check if email already exists
+    existing_user = crud.get_user_by_email(db, email=user_data.email)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Validate password
+    if len(user_data.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    
+    # Create new user with hashed password
+    new_user = crud.create_user(db, name=user_data.name, email=user_data.email, password=user_data.password)
+    
+    # Create access token
+    access_token = create_access_token(
+        data={"sub": new_user.id},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": new_user.to_dict()
+    }
+
+@app.post("/login", response_model=Token)
+def login(user_data: UserLogin, db: Session = Depends(get_db)):
+    """Login user and return JWT token"""
+    # Authenticate user
+    user = authenticate_user(db, user_data.email, user_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect email or password"
+        )
+    
+    # Create access token
+    access_token = create_access_token(
+        data={"sub": user.id},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user.to_dict()
+    }
+
+@app.get("/me")
+def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """Get current authenticated user information"""
+    return {
+        "success": True,
+        "user": current_user.to_dict()
     }
 
 # User endpoints
@@ -56,16 +140,17 @@ def get_users(db: Session = Depends(get_db)):
 def add_user(
     name: str = Query(..., description="User's name"),
     email: str = Query(..., description="User's email"),
+    password: str = Query(..., description="User's password"),
     db: Session = Depends(get_db)
 ):
-    """Add a new user"""
+    """Add a new user (legacy endpoint - use /register instead)"""
     # Check if email already exists
     existing_user = crud.get_user_by_email(db, email=email)
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Create new user
-    new_user = crud.create_user(db, name=name, email=email)
+    # Create new user with hashed password
+    new_user = crud.create_user(db, name=name, email=email, password=password)
     return {
         "success": True,
         "message": "User created successfully",
@@ -98,17 +183,12 @@ def get_skills(
 def add_skill(
     skill: str = Query(..., description="Skill name"),
     description: str = Query(..., description="Skill description"),
-    user_id: int = Query(..., description="User ID who owns this skill"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Add a new skill"""
-    # Check if user exists
-    user = crud.get_user_by_id(db, user_id=user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail=f"User with ID {user_id} not found")
-    
-    # Create new skill
-    new_skill = crud.create_skill(db, skill=skill, description=description, user_id=user_id)
+    """Add a new skill (protected endpoint - requires authentication)"""
+    # Create new skill for the authenticated user
+    new_skill = crud.create_skill(db, skill=skill, description=description, user_id=current_user.id)
     return {
         "success": True,
         "message": "Skill added successfully",

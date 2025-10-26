@@ -13,14 +13,34 @@
             servicesUsed: 8
         };
 
-        let isLoggedIn = false; // Changed to false - users must login first
+        let isLoggedIn = false;
+        let authToken = null; // JWT token
         let currentServiceForBooking = null;
         let allUsers = [];
         let services = [];
 
+        // Helper function to get auth headers
+        function getAuthHeaders() {
+            return {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+            };
+        }
+
         // Initialize App
         async function initApp() {
-            if (isLoggedIn) {
+            // Check for saved token
+            const savedToken = localStorage.getItem('authToken');
+            const savedUser = localStorage.getItem('user');
+            
+            if (savedToken && savedUser) {
+                authToken = savedToken;
+                const user = JSON.parse(savedUser);
+                currentUser.id = user.id;
+                currentUser.name = user.name;
+                currentUser.email = user.email;
+                isLoggedIn = true;
+                
                 showSection('home');
                 await loadUsers();
                 await loadServices();
@@ -105,20 +125,41 @@
                 return;
             }
             
-            // Load users and find matching email
-            await loadUsers();
-            const user = allUsers.find(u => u.email === email);
-            
-            if (user) {
-                currentUser.id = user.id;
-                currentUser.name = user.name;
-                currentUser.email = user.email;
-                isLoggedIn = true;
-                showSection('home');
-                await loadServices();
-                alert(`Welcome back, ${user.name}!`);
-            } else {
-                showError('loginEmailError', 'Email not found. Please register first.');
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Store token and user info
+                    authToken = data.access_token;
+                    currentUser.id = data.user.id;
+                    currentUser.name = data.user.name;
+                    currentUser.email = data.user.email;
+                    isLoggedIn = true;
+                    
+                    // Store token in localStorage
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    showSection('home');
+                    await loadServices();
+                    alert(`Welcome back, ${data.user.name}!`);
+                } else {
+                    showError('loginEmailError', data.detail || 'Login failed');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('loginEmailError', 'Login failed. Make sure the backend is running!');
             }
         }
 
@@ -145,20 +186,34 @@
                 return;
             }
             
-            // Register user via API
             try {
-                const response = await fetch(`${API_URL}/add-user?name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}`, {
-                    method: 'POST'
+                const response = await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        password: password
+                    })
                 });
                 
                 const data = await response.json();
                 
-                if (data.success) {
+                if (response.ok) {
+                    // Store token and user info
+                    authToken = data.access_token;
                     currentUser.id = data.user.id;
                     currentUser.name = data.user.name;
                     currentUser.email = data.user.email;
                     currentUser.credits = 10; // Starting credits
                     isLoggedIn = true;
+                    
+                    // Store token in localStorage
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
                     showSection('home');
                     await loadServices();
                     alert(`Welcome to HelpX, ${name}!`);
@@ -173,7 +228,25 @@
 
         function logout() {
             isLoggedIn = false;
+            authToken = null;
+            currentUser = {
+                id: null,
+                name: '',
+                email: '',
+                phone: '14002 54002',
+                bio: '',
+                credits: 25,
+                rating: 4.8,
+                servicesOffered: 0,
+                servicesUsed: 8
+            };
+            
+            // Clear localStorage
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            
             showSection('auth');
+            alert('You have been logged out');
         }
 
         function showRegistration() {
@@ -281,7 +354,7 @@
         async function postService(event) {
             event.preventDefault();
             
-            if (!currentUser.id) {
+            if (!currentUser.id || !authToken) {
                 alert('Please login first to post a service!');
                 return;
             }
@@ -292,13 +365,14 @@
             const rate = parseInt(document.getElementById('serviceRate').value);
             
             try {
-                const response = await fetch(`${API_URL}/add-skill?skill=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&user_id=${currentUser.id}`, {
-                    method: 'POST'
+                const response = await fetch(`${API_URL}/add-skill?skill=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`, {
+                    method: 'POST',
+                    headers: getAuthHeaders()
                 });
                 
                 const data = await response.json();
                 
-                if (data.success) {
+                if (response.ok && data.success) {
                     alert('Service posted successfully!');
                     await loadServices();
                     currentUser.servicesOffered++;
@@ -311,7 +385,12 @@
                     document.getElementById('serviceDescription').value = '';
                     document.getElementById('serviceRate').value = '1';
                 } else {
-                    alert('Failed to post service: ' + (data.detail || 'Unknown error'));
+                    if (response.status === 401) {
+                        alert('Your session has expired. Please login again.');
+                        logout();
+                    } else {
+                        alert('Failed to post service: ' + (data.detail || 'Unknown error'));
+                    }
                 }
             } catch (error) {
                 console.error('Error posting service:', error);
