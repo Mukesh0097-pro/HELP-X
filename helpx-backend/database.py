@@ -3,7 +3,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # PostgreSQL Configuration
-DATABASE_URL = "postgresql://postgres:project8610%40@localhost:5432/helpx"
+# NOTE: Replace YOUR_PASSWORD with your actual postgres password
+DATABASE_URL = "postgresql://postgres:YOUR_PASSWORD@localhost:5432/helpx"
 
 # For testing with SQLite instead (comment line above and uncomment below):
 # DATABASE_URL = "sqlite:///./helpx.db"

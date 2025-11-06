@@ -46,6 +46,8 @@ class UserLogin(BaseModel):
     password: str
 
 class Token(BaseModel):
+    message: str
+    success: bool
     access_token: str
     token_type: str
     user: dict
@@ -70,29 +72,42 @@ def read_root():
 @app.post("/register", response_model=Token)
 def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """Register a new user with password"""
-    # Check if email already exists
-    existing_user = crud.get_user_by_email(db, email=user_data.email)
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Validate password
-    if len(user_data.password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
-    
-    # Create new user with hashed password
-    new_user = crud.create_user(db, name=user_data.name, email=user_data.email, password=user_data.password)
-    
-    # Create access token
-    access_token = create_access_token(
-        data={"sub": new_user.id},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    
-    return {
-        "access_token": access_token,
-        "token_type": "bearer",
-        "user": new_user.to_dict()
-    }
+    try:
+        print(f"🔍 Registration attempt: {user_data.email}")
+        
+        # Check if email already exists
+        existing_user = crud.get_user_by_email(db, email=user_data.email)
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Email already registered")
+        
+        # Validate password
+        if len(user_data.password) < 6:
+            raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+        
+        # Create new user with hashed password
+        print(f"🔍 Creating user: {user_data.name}")
+        new_user = crud.create_user(db, name=user_data.name, email=user_data.email, password=user_data.password)
+        print(f"✅ User created with ID: {new_user.id}")
+        
+        # Create access token
+        access_token = create_access_token(
+            data={"sub": new_user.id},
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
+        print(f"✅ Token created successfully")
+        
+        return {
+            "message": "User created successfully",
+            "success": True,
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": new_user.to_dict()
+        }
+        
+    except Exception as e:
+        print(f"❌ Registration failed: {str(e)}")
+        print(f"❌ Error type: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @app.post("/login", response_model=Token)
 def login(user_data: UserLogin, db: Session = Depends(get_db)):
@@ -112,6 +127,8 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
     )
     
     return {
+        "message": "Login successful",
+        "success": True,
         "access_token": access_token,
         "token_type": "bearer",
         "user": user.to_dict()
