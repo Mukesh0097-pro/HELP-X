@@ -44,6 +44,8 @@
                             <div class="error" id="loginPasswordError"></div>
                         </div>
                         <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                        <div class="text-center" style="margin: 0.75rem 0; color: #999;">or</div>
+                        <button type="button" class="btn btn-outline" style="width: 100%;" onclick="firebaseGoogleLogin()">Continue with Google</button>
                     </form>
                     <p class="text-center mt-2">
                         Don't have an account? 
@@ -76,6 +78,8 @@
                             <textarea id="regBio" rows="3" placeholder="Tell us about yourself and your skills..."></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
+                        <div class="text-center" style="margin: 0.75rem 0; color: #999;">or</div>
+                        <button type="button" class="btn btn-outline" style="width: 100%;" onclick="firebaseGoogleLogin()">Continue with Google</button>
                     </form>
                     <p class="text-center mt-2">
                         Already have an account? 
@@ -317,6 +321,26 @@
         </div>
     </div>
 
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-analytics-compat.js"></script>
+    <script>
+        // Firebase project config (provided)
+        const firebaseConfig = {
+          apiKey: "AIzaSyDDusVMmO6ZDY1TjSoXdPv_9SqD89GAQIU",
+          authDomain: "key-conquest-459514-i9.firebaseapp.com",
+          projectId: "key-conquest-459514-i9",
+          storageBucket: "key-conquest-459514-i9.firebasestorage.app",
+          messagingSenderId: "210580757629",
+          appId: "1:210580757629:web:f87e11db4e4621f05ba514",
+          measurementId: "G-JMRYJH87R1"
+        };
+        firebase.initializeApp(firebaseConfig);
+        if (firebase.analytics) {
+            try { firebase.analytics(); } catch (e) { /* analytics optional */ }
+        }
+    </script>
     <script src="App.js"></script>
 
 </body>

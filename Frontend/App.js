@@ -19,6 +19,39 @@
         let allUsers = [];
         let services = [];
 
+        // Firebase login (Google)
+        async function firebaseGoogleLogin() {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                const result = await firebase.auth().signInWithPopup(provider);
+                const idToken = await result.user.getIdToken();
+                // Exchange Firebase ID token for backend session (local JWT)
+                const resp = await fetch(`${API_URL}/auth/firebase/session`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_token: idToken })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.detail || 'Firebase session exchange failed');
+
+                authToken = data.access_token;
+                currentUser.id = data.user.id;
+                currentUser.name = data.user.name;
+                currentUser.email = data.user.email;
+                isLoggedIn = true;
+
+                localStorage.setItem('authToken', authToken);
+                localStorage.setItem('user', JSON.stringify(data.user));
+
+                showSection('home');
+                await loadServices();
+                alert(`Signed in as ${data.user.name}`);
+            } catch (err) {
+                console.error('Firebase login error:', err);
+                alert('Google sign-in failed.');
+            }
+        }
+
         // Helper function to get auth headers
         function getAuthHeaders() {
             return {

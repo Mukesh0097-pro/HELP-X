@@ -16,6 +16,7 @@ from auth import (
     get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
+from firebase_auth import verify_id_token as firebase_verify_id_token, extract_user_info as firebase_extract_user_info
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
@@ -52,6 +53,9 @@ class Token(BaseModel):
     access_token: str
     token_type: str
     user: dict
+
+class FirebaseTokenIn(BaseModel):
+    id_token: str
 
 # Root endpoint
 @app.get("/")
@@ -109,6 +113,42 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
         print(f"❌ Registration failed: {str(e)}")
         print(f"❌ Error type: {type(e).__name__}")
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+
+@app.post("/auth/firebase/session", response_model=Token)
+def create_session_from_firebase_token(payload: FirebaseTokenIn, db: Session = Depends(get_db)):
+    """Exchange a Firebase ID token for a local JWT and user profile.
+
+    Frontend should obtain Firebase ID token via Firebase JS SDK, then POST here with { id_token }.
+    """
+    try:
+        claims = firebase_verify_id_token(payload.id_token)
+        info = firebase_extract_user_info(claims)
+        if not info.get("email"):
+            raise HTTPException(status_code=400, detail="Firebase token missing email")
+
+        # Find or create a local user
+        user = crud.get_user_by_email(db, email=info["email"])
+        if not user:
+            name = info.get("name") or info["email"].split("@")[0]
+            # Create with a generated password (won't be used; Firebase handles auth)
+            user = crud.create_user(db, name=name, email=info["email"], password=f"firebase-{info['uid'] or 'uid'}")
+
+        access_token = create_access_token(
+            data={"sub": user.id},
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
+        return {
+            "message": "Session created from Firebase token",
+            "success": True,
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": user.to_dict(),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid Firebase token: {e}")
 
 ## OAuth routes removed per revert request
 
