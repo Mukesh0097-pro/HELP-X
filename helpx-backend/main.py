@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Query, Body
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import timedelta
@@ -108,6 +109,8 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
         print(f"❌ Registration failed: {str(e)}")
         print(f"❌ Error type: {type(e).__name__}")
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+## OAuth routes removed per revert request
 
 @app.post("/login", response_model=Token)
 def login(user_data: UserLogin, db: Session = Depends(get_db)):
