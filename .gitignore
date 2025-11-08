@@ -1,1 +1,41 @@
-HELP-X/
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+*.log
+coverage/
+
+# Environments
+.env
+.env.*
+venv/
+.venv/
+env/
+
+# Node (if ever used in Frontend)
+node_modules/
+
+# Builds / artifacts
+build/
+dist/
+.cache/
+
+# Firebase service account (DO NOT COMMIT)
+helpx-backend/firebase private key.json
+helpx-backend/*firebase*key*.json
+
+# Local backups / temp
+*.bak
+*.tmp
+

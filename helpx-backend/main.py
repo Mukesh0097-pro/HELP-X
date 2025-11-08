@@ -16,7 +16,8 @@ from auth import (
     get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
-from firebase_auth import verify_id_token as firebase_verify_id_token, extract_user_info as firebase_extract_user_info
+from firebase_auth import verify_id_token as firebase_verify_id_token, extract_user_info as firebase_extract_user_info, init_firebase
+import firebase_admin
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
@@ -72,6 +73,18 @@ def read_root():
             "me": "/me"
         }
     }
+
+@app.get("/firebase/project")
+def firebase_project_info():
+    """Return Firebase project identifier (debug endpoint)."""
+    try:
+        init_firebase()
+        app_obj = firebase_admin.get_app()
+        # project_id can be available via options or attribute depending on SDK internals
+        project_id = getattr(app_obj, 'project_id', None) or app_obj.options.get('projectId')
+        return {"success": True, "project_id": project_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Firebase not initialized: {e}")
 
 # Authentication endpoints
 @app.post("/register", response_model=Token)

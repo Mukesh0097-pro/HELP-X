@@ -19,8 +19,8 @@
         let allUsers = [];
         let services = [];
 
-        // Firebase login (Google)
-        async function firebaseGoogleLogin() {
+    // Firebase login (Google) -> exchanges Firebase ID token for backend session JWT
+    async function firebaseGoogleLogin() {
             const loginErr = document.getElementById('googleLoginError');
             const regErr = document.getElementById('googleRegisterError');
             if (loginErr) loginErr.textContent = '';
@@ -28,7 +28,9 @@
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
                 const result = await firebase.auth().signInWithPopup(provider);
-                const idToken = await result.user.getIdToken();
+                // Fresh ID token (force refresh false unless you need updated claims)
+                const idToken = await result.user.getIdToken(/* forceRefresh */ false);
+                // Exchange Firebase token for local backend JWT session
                 const resp = await fetch(`${API_URL}/auth/firebase/session`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
