@@ -45,7 +45,11 @@
                         </div>
                         <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
                         <div class="text-center" style="margin: 0.75rem 0; color: #999;">or</div>
-                        <button type="button" class="btn btn-outline" style="width: 100%;" onclick="firebaseGoogleLogin()">Continue with Google</button>
+                        <button type="button" class="btn btn-google" onclick="firebaseGoogleLogin()">
+                            <img alt="Google" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" />
+                            Continue with Google
+                        </button>
+                        <div class="error mt-2" id="googleLoginError"></div>
                     </form>
                     <p class="text-center mt-2">
                         Don't have an account? 
@@ -79,7 +83,11 @@
                         </div>
                         <button type="submit" class="btn btn-primary" style="width: 100%;">Register</button>
                         <div class="text-center" style="margin: 0.75rem 0; color: #999;">or</div>
-                        <button type="button" class="btn btn-outline" style="width: 100%;" onclick="firebaseGoogleLogin()">Continue with Google</button>
+                        <button type="button" class="btn btn-google" onclick="firebaseGoogleLogin()">
+                            <img alt="Google" src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" />
+                            Continue with Google
+                        </button>
+                        <div class="error mt-2" id="googleRegisterError"></div>
                     </form>
                     <p class="text-center mt-2">
                         Already have an account? 

@@ -21,11 +21,14 @@
 
         // Firebase login (Google)
         async function firebaseGoogleLogin() {
+            const loginErr = document.getElementById('googleLoginError');
+            const regErr = document.getElementById('googleRegisterError');
+            if (loginErr) loginErr.textContent = '';
+            if (regErr) regErr.textContent = '';
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
                 const result = await firebase.auth().signInWithPopup(provider);
                 const idToken = await result.user.getIdToken();
-                // Exchange Firebase ID token for backend session (local JWT)
                 const resp = await fetch(`${API_URL}/auth/firebase/session`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -45,10 +48,15 @@
 
                 showSection('home');
                 await loadServices();
-                alert(`Signed in as ${data.user.name}`);
             } catch (err) {
                 console.error('Firebase login error:', err);
-                alert('Google sign-in failed.');
+                const msg = (err && err.message) ? err.message : 'Google sign-in failed.';
+                if (loginErr) loginErr.textContent = msg;
+                if (regErr) regErr.textContent = msg;
+                // Helpful hints for common issues
+                if (msg.includes('operation-not-supported-in-this-environment')) {
+                    if (loginErr) loginErr.textContent = 'Google sign-in requires running the page via http(s). Please serve the frontend on http://localhost (not file://).';
+                }
             }
         }
 
