@@ -18,8 +18,9 @@
         let currentServiceForBooking = null;
         let allUsers = [];
         let services = [];
+        let bookings = [];
 
-    // Firebase login (Google) -> exchanges Firebase ID token for backend session JWT
+        // Firebase login (Google) -> exchanges Firebase ID token for backend session JWT
     async function firebaseGoogleLogin() {
             const loginErr = document.getElementById('googleLoginError');
             const regErr = document.getElementById('googleRegisterError');
@@ -147,6 +148,8 @@
                 loadServices();
             } else if (sectionId === 'profile') {
                 loadUserProfile();
+            } else if (sectionId === 'bookings') {
+                loadBookings();
             }
         }
 
@@ -332,6 +335,121 @@
             });
         }
 
+        // Load bookings
+        async function loadBookings() {
+            if (!authToken) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/bookings`, {
+                    headers: getAuthHeaders()
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    bookings = data.bookings;
+                    console.log('Bookings loaded:', bookings.length);
+                    displayBookings();
+                }
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+            }
+        }
+
+        function displayBookings() {
+            const receivedGrid = document.getElementById('receivedBookingsGrid');
+            const sentGrid = document.getElementById('sentBookingsGrid');
+            
+            if (!receivedGrid || !sentGrid) return;
+            
+            // Filter bookings
+            const received = bookings.filter(b => b.provider_id === currentUser.id);
+            const sent = bookings.filter(b => b.customer_id === currentUser.id);
+            
+            // Display received bookings
+            receivedGrid.innerHTML = '';
+            if (received.length === 0) {
+                receivedGrid.innerHTML = '<p style="padding: 1rem; color: #999;">No bookings received yet.</p>';
+            } else {
+                received.forEach(booking => {
+                    receivedGrid.appendChild(createBookingCard(booking, 'provider'));
+                });
+            }
+            
+            // Display sent bookings
+            sentGrid.innerHTML = '';
+            if (sent.length === 0) {
+                sentGrid.innerHTML = '<p style="padding: 1rem; color: #999;">No bookings made yet.</p>';
+            } else {
+                sent.forEach(booking => {
+                    sentGrid.appendChild(createBookingCard(booking, 'customer'));
+                });
+            }
+        }
+
+        function createBookingCard(booking, role) {
+            const card = document.createElement('div');
+            card.className = 'service-card';
+            
+            const statusColors = {
+                'pending': '#f39c12',
+                'accepted': '#3498db',
+                'completed': '#27ae60',
+                'cancelled': '#95a5a6'
+            };
+            
+            const otherPerson = role === 'provider' ? booking.customer_name : booking.provider_name;
+            const dateStr = booking.booking_date ? new Date(booking.booking_date).toLocaleString() : 'Not scheduled';
+            
+            let actions = '';
+            if (role === 'provider' && booking.status === 'pending') {
+                actions = `
+                    <button class="btn btn-primary" style="margin-right: 0.5rem;" onclick="updateBookingStatus(${booking.id}, 'accepted')">Accept</button>
+                    <button class="btn btn-outline" onclick="updateBookingStatus(${booking.id}, 'cancelled')">Decline</button>
+                `;
+            } else if (role === 'provider' && booking.status === 'accepted') {
+                actions = `
+                    <button class="btn btn-primary" onclick="updateBookingStatus(${booking.id}, 'completed')">Mark Complete</button>
+                `;
+            }
+            
+            card.innerHTML = `
+                <div class="service-header">
+                    <div class="service-title">${booking.skill_name}</div>
+                    <div class="service-provider">${role === 'provider' ? 'from' : 'with'} ${otherPerson}</div>
+                    <span class="service-category" style="background: ${statusColors[booking.status]};">${booking.status}</span>
+                </div>
+                <div class="service-body">
+                    <p><strong>Date:</strong> ${dateStr}</p>
+                    <p><strong>Duration:</strong> ${booking.duration_hours} hour(s)</p>
+                    ${booking.notes ? `<p><strong>Notes:</strong> ${booking.notes}</p>` : ''}
+                </div>
+                ${actions ? `<div style="padding: 1rem;">${actions}</div>` : ''}
+            `;
+            return card;
+        }
+
+        async function updateBookingStatus(bookingId, status) {
+            try {
+                const response = await fetch(`${API_URL}/bookings/${bookingId}/status`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ status: status })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    alert(`Booking ${status}!`);
+                    await loadBookings();
+                } else {
+                    alert('Failed to update booking: ' + (data.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error updating booking:', error);
+                alert('Failed to update booking');
+            }
+        }
+
         function createServiceCard(service) {
             const card = document.createElement('div');
             card.className = 'service-card';
@@ -369,6 +487,25 @@
                 'transport': 'Transport'
             };
             return categories[category] || category;
+        }
+
+        function switchBookingTab(tabName) {
+            // Update tab buttons
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            const receivedTab = document.getElementById('receivedBookingsTab');
+            const sentTab = document.getElementById('sentBookingsTab');
+
+            if (tabName === 'received') {
+                receivedTab.classList.add('active');
+                sentTab.classList.remove('active');
+            } else {
+                sentTab.classList.add('active');
+                receivedTab.classList.remove('active');
+            }
         }
 
         function filterServices() {
@@ -492,24 +629,61 @@
             openModal('bookServiceModal');
         }
 
-        function bookService(event) {
+        async function bookService(event) {
             event.preventDefault();
+            
+            if (!authToken) {
+                alert('Please login first to book a service!');
+                return;
+            }
             
             const date = document.getElementById('bookingDate').value;
             const time = document.getElementById('bookingTime').value;
             const duration = parseInt(document.getElementById('bookingDuration').value);
             const notes = document.getElementById('bookingNotes').value;
             
-            // Simulate booking process
-            alert(`Booking request sent to ${currentServiceForBooking.provider} for ${date} at ${time} (${duration} hour${duration > 1 ? 's' : ''})`);
+            // Combine date and time to ISO format
+            let bookingDate = null;
+            if (date && time) {
+                bookingDate = `${date}T${time}:00`;
+            }
             
-            closeModal('bookServiceModal');
-            
-            // Clear form
-            document.getElementById('bookingDate').value = '';
-            document.getElementById('bookingTime').value = '';
-            document.getElementById('bookingDuration').value = '1';
-            document.getElementById('bookingNotes').value = '';
+            try {
+                const response = await fetch(`${API_URL}/bookings`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        provider_id: currentServiceForBooking.user_id,
+                        skill_id: currentServiceForBooking.id,
+                        booking_date: bookingDate,
+                        duration_hours: duration,
+                        notes: notes
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    alert(`Booking request sent to ${currentServiceForBooking.provider}!`);
+                    closeModal('bookServiceModal');
+                    
+                    // Clear form
+                    document.getElementById('bookingDate').value = '';
+                    document.getElementById('bookingTime').value = '';
+                    document.getElementById('bookingDuration').value = '1';
+                    document.getElementById('bookingNotes').value = '';
+                } else {
+                    if (response.status === 401) {
+                        alert('Your session has expired. Please login again.');
+                        logout();
+                    } else {
+                        alert('Failed to create booking: ' + (data.detail || 'Unknown error'));
+                    }
+                }
+            } catch (error) {
+                console.error('Booking error:', error);
+                alert('Failed to create booking. Make sure the backend is running!');
+            }
         }
 
         // Messages Functions

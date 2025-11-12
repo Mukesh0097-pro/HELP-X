@@ -35,6 +35,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
+    # Ensure 'sub' is a string (JWT standard requires it)
+    if 'sub' in to_encode and not isinstance(to_encode['sub'], str):
+        to_encode['sub'] = str(to_encode['sub'])
+    
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -44,7 +48,17 @@ def decode_token(token: str) -> dict:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except JWTError:
+    except jwt.ExpiredSignatureError:
+        print("❌ JWT Error: Token has expired")
+        return None
+    except jwt.JWTClaimsError as e:
+        print(f"❌ JWT Error: Invalid claims - {e}")
+        return None
+    except JWTError as e:
+        print(f"❌ JWT Error: {type(e).__name__} - {e}")
+        return None
+    except Exception as e:
+        print(f"❌ Unexpected error decoding token: {type(e).__name__} - {e}")
         return None
 
 def get_current_user(
@@ -59,19 +73,32 @@ def get_current_user(
     )
     
     token = credentials.credentials
+    print(f"🔍 Received token: {token[:50]}..." if len(token) > 50 else f"🔍 Received token: {token}")
     payload = decode_token(token)
     
     if payload is None:
+        print("❌ Token decode failed")
         raise credentials_exception
     
-    user_id: int = payload.get("sub")
-    if user_id is None:
+    print(f"✅ Token payload: {payload}")
+    user_id_str: str = payload.get("sub")
+    if user_id_str is None:
+        print("❌ No user_id in payload")
+        raise credentials_exception
+    
+    # Convert string user_id back to integer
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        print(f"❌ Invalid user_id format: {user_id_str}")
         raise credentials_exception
     
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
+        print(f"❌ User {user_id} not found in database")
         raise credentials_exception
     
+    print(f"✅ Authenticated user: {user.name} (ID: {user.id})")
     return user
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:

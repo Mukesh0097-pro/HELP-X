@@ -15,6 +15,7 @@
                 <ul class="nav-links">
                     <li><a href="#" onclick="showSection('home')">Home</a></li>
                     <li><a href="#" onclick="showSection('services')">Services</a></li>
+                    <li><a href="#" onclick="showSection('bookings')">Bookings</a></li>
                     <li><a href="#" onclick="showSection('messages')">Messages</a></li>
                     <li><a href="#" onclick="showSection('profile')">Profile</a></li>
                 </ul>
@@ -151,6 +152,31 @@
                 </div>
                 <div class="services-grid" id="servicesGrid">
                     <!-- Services will be dynamically loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Bookings Section -->
+        <section id="bookings" class="section">
+            <div class="container">
+                <h2 class="mb-2">My Bookings</h2>
+                <div class="bookings-tabs">
+                    <button class="tab-btn active" onclick="switchBookingTab('received')">Bookings I Received</button>
+                    <button class="tab-btn" onclick="switchBookingTab('sent')">Bookings I Made</button>
+                </div>
+                <div class="tab-content">
+                    <div id="receivedBookingsTab" class="tab-pane active">
+                        <h3>Requests for My Services</h3>
+                        <div class="services-grid" id="receivedBookingsGrid">
+                            <!-- Received bookings will be dynamically loaded here -->
+                        </div>
+                    </div>
+                    <div id="sentBookingsTab" class="tab-pane">
+                        <h3>Services I've Requested</h3>
+                        <div class="services-grid" id="sentBookingsGrid">
+                            <!-- Sent bookings will be dynamically loaded here -->
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

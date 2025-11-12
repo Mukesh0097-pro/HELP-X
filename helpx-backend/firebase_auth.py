@@ -64,9 +64,13 @@ def init_firebase() -> None:
 
 
 def verify_id_token(id_token: str) -> Dict[str, Any]:
-    """Verify Firebase ID token and return decoded claims."""
+    """Verify Firebase ID token and return decoded claims.
+    
+    Includes clock skew tolerance to handle minor time sync issues between client/server.
+    """
     init_firebase()
-    decoded = auth.verify_id_token(id_token)
+    # Allow 60 seconds clock skew tolerance to handle time sync issues
+    decoded = auth.verify_id_token(id_token, clock_skew_seconds=60)
     return decoded
 
 

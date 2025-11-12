@@ -8,7 +8,7 @@ import uvicorn
 from pydantic import BaseModel, EmailStr
 
 from database import engine, get_db, Base
-from models import User, Skill
+from models import User, Skill, Booking
 import crud
 from auth import (
     authenticate_user, 
@@ -57,6 +57,16 @@ class Token(BaseModel):
 
 class FirebaseTokenIn(BaseModel):
     id_token: str
+
+class BookingCreate(BaseModel):
+    provider_id: int
+    skill_id: int
+    booking_date: Optional[str] = None  # ISO format datetime string
+    duration_hours: int = 1
+    notes: Optional[str] = None
+
+class BookingStatusUpdate(BaseModel):
+    status: str  # "pending", "accepted", "completed", "cancelled"
 
 # Root endpoint
 @app.get("/")
@@ -260,12 +270,173 @@ def add_skill(
     db: Session = Depends(get_db)
 ):
     """Add a new skill (protected endpoint - requires authentication)"""
+    print(f"✅ Authenticated user: {current_user.name} (ID: {current_user.id})")
     # Create new skill for the authenticated user
     new_skill = crud.create_skill(db, skill=skill, description=description, user_id=current_user.id)
     return {
         "success": True,
         "message": "Skill added successfully",
         "skill": new_skill.to_dict()
+    }
+
+# Booking endpoints
+@app.post("/bookings")
+def create_booking(
+    booking_data: BookingCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a new booking (protected endpoint - requires authentication)"""
+    try:
+        # Verify skill exists
+        skill = db.query(Skill).filter(Skill.id == booking_data.skill_id).first()
+        if not skill:
+            raise HTTPException(status_code=404, detail="Skill not found")
+        
+        # Verify provider exists
+        provider = db.query(User).filter(User.id == booking_data.provider_id).first()
+        if not provider:
+            raise HTTPException(status_code=404, detail="Provider not found")
+        
+        # Can't book your own service
+        if booking_data.provider_id == current_user.id:
+            raise HTTPException(status_code=400, detail="Cannot book your own service")
+        
+        # Parse booking date if provided
+        from datetime import datetime
+        booking_date = None
+        if booking_data.booking_date:
+            try:
+                booking_date = datetime.fromisoformat(booking_data.booking_date.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date format. Use ISO format (YYYY-MM-DDTHH:MM:SS)")
+        
+        # Create booking
+        new_booking = crud.create_booking(
+            db=db,
+            customer_id=current_user.id,
+            provider_id=booking_data.provider_id,
+            skill_id=booking_data.skill_id,
+            booking_date=booking_date,
+            duration_hours=booking_data.duration_hours,
+            notes=booking_data.notes
+        )
+        
+        return {
+            "success": True,
+            "message": "Booking created successfully",
+            "booking": new_booking.to_dict()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create booking: {str(e)}")
+
+
+@app.get("/bookings")
+def get_bookings(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    as_customer: bool = Query(None, description="Filter bookings as customer"),
+    as_provider: bool = Query(None, description="Filter bookings as provider")
+):
+    """Get bookings for current user (protected endpoint)"""
+    try:
+        if as_customer:
+            bookings = crud.get_bookings_by_customer(db, current_user.id)
+        elif as_provider:
+            bookings = crud.get_bookings_by_provider(db, current_user.id)
+        else:
+            # Get all bookings (as customer and provider)
+            customer_bookings = crud.get_bookings_by_customer(db, current_user.id)
+            provider_bookings = crud.get_bookings_by_provider(db, current_user.id)
+            bookings = customer_bookings + provider_bookings
+        
+        return {
+            "success": True,
+            "count": len(bookings),
+            "bookings": [booking.to_dict() for booking in bookings]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get bookings: {str(e)}")
+
+
+@app.get("/bookings/{booking_id}")
+def get_booking(
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get a specific booking by ID (protected endpoint)"""
+    booking = crud.get_booking_by_id(db, booking_id)
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Only customer or provider can view the booking
+    if booking.customer_id != current_user.id and booking.provider_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this booking")
+    
+    return {
+        "success": True,
+        "booking": booking.to_dict()
+    }
+
+
+@app.patch("/bookings/{booking_id}/status")
+def update_booking_status(
+    booking_id: int,
+    status_update: BookingStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update booking status (protected endpoint - only provider can update)"""
+    booking = crud.get_booking_by_id(db, booking_id)
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Only provider can update booking status
+    if booking.provider_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the service provider can update booking status")
+    
+    # Validate status
+    valid_statuses = ["pending", "accepted", "completed", "cancelled"]
+    if status_update.status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}")
+    
+    updated_booking = crud.update_booking_status(db, booking_id, status_update.status)
+    
+    return {
+        "success": True,
+        "message": f"Booking status updated to {status_update.status}",
+        "booking": updated_booking.to_dict()
+    }
+
+
+@app.delete("/bookings/{booking_id}")
+def cancel_booking(
+    booking_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Cancel a booking (protected endpoint - customer or provider can cancel)"""
+    booking = crud.get_booking_by_id(db, booking_id)
+    
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    
+    # Only customer or provider can cancel
+    if booking.customer_id != current_user.id and booking.provider_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to cancel this booking")
+    
+    # Update status to cancelled instead of deleting
+    updated_booking = crud.update_booking_status(db, booking_id, "cancelled")
+    
+    return {
+        "success": True,
+        "message": "Booking cancelled successfully",
+        "booking": updated_booking.to_dict()
     }
 
 # Run the application
