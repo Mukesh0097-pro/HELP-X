@@ -1,6 +1,3 @@
-"""
-Check what data is stored in the PostgreSQL database
-"""
 from database import SessionLocal
 from models import User, Skill
 
@@ -10,7 +7,6 @@ print("=" * 60)
 print("CHECKING DATABASE CONTENTS")
 print("=" * 60)
 
-# Check users
 print("\n📊 USERS TABLE:")
 print("-" * 60)
 users = db.query(User).all()
@@ -25,7 +21,6 @@ if users:
 else:
     print("❌ No users found in database")
 
-# Check skills
 print("\n📊 SKILLS TABLE:")
 print("-" * 60)
 skills = db.query(Skill).all()

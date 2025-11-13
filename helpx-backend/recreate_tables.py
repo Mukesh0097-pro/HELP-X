@@ -1,6 +1,3 @@
-"""
-Recreate database tables with the correct schema
-"""
 from database import Base, engine
 from models import User, Skill
 

@@ -4,14 +4,11 @@ from datetime import datetime
 from database import Base
 import enum
 
-
 class BookingStatus(enum.Enum):
-    """Enum for booking status"""
     PENDING = "pending"
     ACCEPTED = "accepted"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
-
 
 class User(Base):
     __tablename__ = "users"
@@ -20,15 +17,12 @@ class User(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
-    bio = Column(Text, nullable=True)  # User bio/description
+    bio = Column(Text, nullable=True)
     
-    # Relationship with skills
     skills = relationship("Skill", back_populates="owner", cascade="all, delete-orphan")
     
-    # Relationship with bookings (as customer)
     bookings_as_customer = relationship("Booking", foreign_keys="Booking.customer_id", back_populates="customer", cascade="all, delete-orphan")
     
-    # Relationship with bookings (as provider)
     bookings_as_provider = relationship("Booking", foreign_keys="Booking.provider_id", back_populates="provider", cascade="all, delete-orphan")
     
     def to_dict(self):
@@ -39,7 +33,6 @@ class User(Base):
             "bio": self.bio
         }
 
-
 class Skill(Base):
     __tablename__ = "skills"
     
@@ -48,10 +41,8 @@ class Skill(Base):
     description = Column(Text, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     
-    # Relationship with user
     owner = relationship("User", back_populates="skills")
     
-    # Relationship with bookings
     bookings = relationship("Booking", back_populates="skill", cascade="all, delete-orphan")
     
     def to_dict(self):
@@ -62,7 +53,6 @@ class Skill(Base):
             "user_id": self.user_id,
             "user_name": self.owner.name if self.owner else None
         }
-
 
 class Booking(Base):
     __tablename__ = "bookings"
@@ -78,7 +68,6 @@ class Booking(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     
-    # Relationships
     customer = relationship("User", foreign_keys=[customer_id], back_populates="bookings_as_customer")
     provider = relationship("User", foreign_keys=[provider_id], back_populates="bookings_as_provider")
     skill = relationship("Skill", back_populates="bookings")

@@ -8,34 +8,27 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 
-# Security configuration
 SECRET_KEY = "your-secret-key-here-change-in-production-09876543210"  # Change this in production!
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
-# Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# HTTP Bearer token
 security = HTTPBearer()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against a hash"""
     return pwd_context.verify(plain_password, hashed_password)
 
 def get_password_hash(password: str) -> str:
-    """Hash a password"""
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Create a JWT access token"""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    # Ensure 'sub' is a string (JWT standard requires it)
     if 'sub' in to_encode and not isinstance(to_encode['sub'], str):
         to_encode['sub'] = str(to_encode['sub'])
     
@@ -44,7 +37,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 def decode_token(token: str) -> dict:
-    """Decode a JWT token"""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
@@ -65,7 +57,6 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> User:
-    """Get the current authenticated user from JWT token"""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -86,7 +77,6 @@ def get_current_user(
         print("❌ No user_id in payload")
         raise credentials_exception
     
-    # Convert string user_id back to integer
     try:
         user_id = int(user_id_str)
     except (ValueError, TypeError):
@@ -102,7 +92,6 @@ def get_current_user(
     return user
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
-    """Authenticate a user by email and password"""
     user = db.query(User).filter(User.email == email).first()
     if not user:
         return None
