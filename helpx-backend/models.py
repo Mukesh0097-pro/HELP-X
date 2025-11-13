@@ -20,6 +20,7 @@ class User(Base):
     name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
+    bio = Column(Text, nullable=True)  # User bio/description
     
     # Relationship with skills
     skills = relationship("Skill", back_populates="owner", cascade="all, delete-orphan")
@@ -34,7 +35,8 @@ class User(Base):
         return {
             "id": self.id,
             "name": self.name,
-            "email": self.email
+            "email": self.email,
+            "bio": self.bio
         }
 
 

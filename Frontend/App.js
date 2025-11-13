@@ -215,6 +215,7 @@
             const name = document.getElementById('regName').value;
             const email = document.getElementById('regEmail').value;
             const password = document.getElementById('regPassword').value;
+            const bio = document.getElementById('regBio').value;
             
             // Validation
             if (name.length < 2) {
@@ -241,7 +242,8 @@
                     body: JSON.stringify({
                         name: name,
                         email: email,
-                        password: password
+                        password: password,
+                        bio: bio || null
                     })
                 });
                 

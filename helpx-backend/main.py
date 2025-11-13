@@ -43,6 +43,7 @@ class UserRegister(BaseModel):
     name: str
     email: EmailStr
     password: str
+    bio: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -114,7 +115,7 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
         
         # Create new user with hashed password
         print(f"🔍 Creating user: {user_data.name}")
-        new_user = crud.create_user(db, name=user_data.name, email=user_data.email, password=user_data.password)
+        new_user = crud.create_user(db, name=user_data.name, email=user_data.email, password=user_data.password, bio=user_data.bio)
         print(f"✅ User created with ID: {new_user.id}")
         
         # Create access token
